@@ -161,11 +161,13 @@ class Camera(IdealCamera):
         # ガウス分布からバイアスを取得
         self.distance_bias_rate_std = norm.rvs(scale=distance_bias_rate_stddev)
         self.direction_bias = norm.rvs(scale=direction_bias_stddev)
-        rx,ry=phantom_range_x, phantom_range_y
+        rx, ry = phantom_range_x, phantom_range_y
         # 一様分布の初期化
         # @note 一様分布=ある区間の値を同じ確率で発生させる
-        #引数はそれぞれ、locはphantom_distが取るべきのx,yの下限、scaleは上限
-        self.phantom_dist=uniform(loc=(rx[0],ry[0]), scale=(rx[1]-rx[0],ry[1]-ry[0]))
+        # 引数はそれぞれ、locはphantom_distが取るべきのx,yの下限、scaleは上限
+        self.phantom_dist = uniform(
+            loc=(rx[0], ry[0]), scale=(rx[1] - rx[0], ry[1] - ry[0])
+        )
         # 各ランドマークのファントムが出現する確率
         self.phantom_prob = phantom_prob
         # ランドマークを見落とす確率
@@ -183,13 +185,14 @@ class Camera(IdealCamera):
             relpos
             + np.array([relpos[0] * self.distance_bias_rate_std, self.direction_bias]).T
         )
-    
+
     def phantom(self, cam_pose, relpos):
-        if uniform.rvs()<self.phantom_prob:
-            pos=np.array(self.phantom_dist.rvs()).T
+        if uniform.rvs() < self.phantom_prob:
+            pos = np.array(self.phantom_dist.rvs()).T
             return self.observation_function(cam_pose, pos)
         else:
             return relpos
+
     def oversight(self, relpos):
         if uniform.rvs() < self.oversight_prob:
             return None
@@ -198,11 +201,11 @@ class Camera(IdealCamera):
 
     def occulusion(self, relpos):
         if uniform.rvs() < self.occulusion_prob:
-            ell = relpos[0] + uniform.rvs()*(self.distance_range[1]-relpos[0])
+            ell = relpos[0] + uniform.rvs() * (self.distance_range[1] - relpos[0])
             return np.array([ell, relpos[1]]).T
         else:
             return relpos
-    
+
     def data(self, cam_pose):
         observed = []
         for lm in self.map.landmarks:
@@ -220,38 +223,37 @@ class Camera(IdealCamera):
 
 
 # %%
-if __name__ == '__main__': 
-    world = World(30, 0.1, debug=False)  
+if __name__ == "__main__":
+    world = World(30, 0.1, debug=False)
 
     ### 地図を生成して3つランドマークを追加 ###
-    m = Map()                                  
-    m.append_landmark(Landmark(-4,2))
-    m.append_landmark(Landmark(2,-3))
-    m.append_landmark(Landmark(3,3))
-    world.append(m)          
+    m = Map()
+    m.append_landmark(Landmark(-4, 2))
+    m.append_landmark(Landmark(2, -3))
+    m.append_landmark(Landmark(3, 3))
+    world.append(m)
 
     ### ロボットを作る ###
-    straight = Agent(0.2, 0.0)    
-    circling = Agent(0.2, 10.0/180*math.pi)  
-    r = Robot( np.array([ 2, 2, math.pi/6]).T, sensor=Camera(m, occlusion_prob=0.1), agent=circling) 
+    straight = Agent(0.2, 0.0)
+    circling = Agent(0.2, 10.0 / 180 * math.pi)
+    r = Robot(
+        np.array([2, 2, math.pi / 6]).T,
+        sensor=Camera(m, occlusion_prob=0.1),
+        agent=circling,
+    )
     world.append(r)
 
-
-    %matplotlib widget
     world.draw()
 
 # %% [markdown]
-# 
+#
 # 指数分布の確率密度関数の式(4.1)
 # $$
 # p(x|\lambda) = {\lambda}{e}^{-{\lambda}{x}}
 # $$
-# 
+#
 # Robotクラスでは上記の式を用いて、環境にランダムに小石が落ちておりそれを踏んだ直後にロボットの向きθをランダムにずらすプログラムを実装している。
-# 
+#
 # $\lambda$は道のりあたりに踏みつける小石の数の期待値に相当する。逆数の$1/\lambda$は小石１つ踏みつけるまでの道のりの期待値に相当する。
 
 # %%
-
-
-
