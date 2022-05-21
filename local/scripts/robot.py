@@ -53,9 +53,10 @@ class Robot(IdealRobot):
         self.bias_rate_omega = norm.rvs(loc=1.0, scale=bias_rate_stds[1])
         self.stuck_pdf = expon(scale=expected_stuck_time)
         self.escape_pdf = expon(scale=expected_escape_time)
+        self.is_stuck = False
         self.time_until_stuck = self.stuck_pdf.rvs()
         self.time_until_escape = self.escape_pdf.rvs()
-        self.is_stuck = False
+
         self.kidnap_pdf = expon(scale=expected_kidnap_time)
         self.time_until_kidnap = self.kidnap_pdf.rvs()
         rx, ry = kidnap_range_x, kidnap_range_y
@@ -173,7 +174,7 @@ class Camera(IdealCamera):
         # ランドマークを見落とす確率
         self.oversight_prob = oversight_prob
         # オクルージョンが起こる確率
-        self.occulusion_prob = occlusion_prob
+        self.occlusion_prob = occlusion_prob
 
     def noise(self, relpos):
         ell = norm.rvs(loc=relpos[0], scale=relpos[0] * self.distance_noise_rate)
@@ -199,8 +200,8 @@ class Camera(IdealCamera):
         else:
             return relpos
 
-    def occulusion(self, relpos):
-        if uniform.rvs() < self.occulusion_prob:
+    def occlusion(self, relpos):
+        if uniform.rvs() < self.occlusion_prob:
             ell = relpos[0] + uniform.rvs() * (self.distance_range[1] - relpos[0])
             return np.array([ell, relpos[1]]).T
         else:
@@ -211,7 +212,7 @@ class Camera(IdealCamera):
         for lm in self.map.landmarks:
             z = self.observation_function(cam_pose, lm.pos)
             z = self.phantom(cam_pose, z)
-            z = self.occulusion(z)
+            z = self.occlusion(z)
             z = self.oversight(z)
             if self.visible(z):
                 z = self.bias(z)
