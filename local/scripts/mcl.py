@@ -1,14 +1,13 @@
 # %%
-## 5.5 リサンプリング
-### 5.5.2 系統サンプリングによるリサンプリングの実装
+## 5.6 出力の実装
 """
 """
 import sys
 
 # 推奨された方法ではない。
 # 参照:https://note.com/iamhacchin/n/n8eb3efafadf9
-sys.path.append("../scripts/")
-from robot import *
+sys.path.append("..")
+from scripts.robot import *
 from scipy.stats import multivariate_normal
 import random
 import copy
@@ -51,7 +50,9 @@ class Particle:
 
             # 尤度の計算
             distance_dev = distance_dev_rate * particle_suggest_pos[0]
+            # 与えられた要素を対角成分に持つ対角行列を算出。式(5.23)
             cov = np.diag(np.array([distance_dev**2, direction_dev**2]))
+            # 式(5.21)。multivariate_normal()は式(5.24)の尤度関数
             self.weight *= multivariate_normal(mean=particle_suggest_pos, cov=cov).pdf(
                 obs_pos
             )
@@ -83,7 +84,9 @@ class Mcl:
         # 式(5.9)用の正規分布を用意。共分散行列のみ与える。平均はデフォルト0なのでそのまま。
         self.motion_noise_rate_pdf = multivariate_normal(cov=c)
         # ml=maximum likelihood(最尤)
+        # mlは重み最大のパーティクルへの参照。
         self.ml = self.particles[0]
+        # MCLによって算出した自己位置は重み最大のパーティクル
         self.pose = self.ml.pose
 
     def set_ml(self):
@@ -93,6 +96,13 @@ class Mcl:
         self.pose = self.ml.pose
 
     def motion_update(self, nu, omega, time):
+        """状態遷移モデルの更新
+
+        Args:
+            nu (_type_): 速度
+            omega (_type_): 角速度
+            time (_type_): 時間
+        """
         # 各パーティクルのmotion_updateメソッドを呼び出す
         for p in self.particles:
             p.motion_update(nu, omega, time, self.motion_noise_rate_pdf)
@@ -177,38 +187,8 @@ class EstimationAgent(Agent):
         self.estimator.observation_update(observation)
         return self.nu, self.omega
 
-    def draw(self, ax, elems):
+    def draw(self, ax, elems):  ###mlwrite
         self.estimator.draw(ax, elems)
-        x, y, t = self.estimator.pose
-        s = "({:.2f},{:.2f},{})".format(x, y, int(t * 180 / math.pi) % 360)
+        x, y, t = self.estimator.pose  # 以下追加
+        s = "({:.2f}, {:.2f}, {})".format(x, y, int(t * 180 / math.pi) % 360)
         elems.append(ax.text(x, y + 0.1, s, fontsize=8))
-
-
-# %%
-def trial():  ###mcl_obs_prepare
-    time_interval = 0.1
-    world = World(30, time_interval, debug=False)
-
-    ### 地図を生成して3つランドマークを追加 ###
-    m = Map()
-    for ln in [(-4, 2), (2, -3), (3, 3)]:
-        m.append_landmark(Landmark(*ln))
-    world.append(m)
-
-    ### ロボットを作る ###
-    initial_pose = np.array([0, 0, 0]).T  # 初期位置を原点に
-    estimator = Mcl(m, initial_pose, 100)
-    a = EstimationAgent(
-        time_interval, 0.2, 10.0 / 180 * math.pi, estimator
-    )  # EstimationAgentに
-    r = Robot(initial_pose, sensor=Camera(m), agent=a, color="red")
-    world.append(r)
-
-    # %matplotlib widget
-    world.draw()
-
-
-# trial()
-
-
-# %%

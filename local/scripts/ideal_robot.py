@@ -3,7 +3,10 @@ import matplotlib
 
 matplotlib.use("nbagg")
 import math
+from matplotlib import rc
+from IPython.display import HTML
 
+rc("animation", html="jshtml")
 import matplotlib.animation as anm
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -47,15 +50,19 @@ class World:
                 repeat=False,
             )
             plt.show()
+            return self.ani
 
     def one_step(self, i, elems, ax):
         while elems:
             elems.pop().remove()
         time_str = "t = %.2f[s]" % (self.time_interval * i)  # 時刻として表示する文字列
         elems.append(ax.text(-4.4, 4.5, time_str, fontsize=10))
+        # worldに登録されたオブジェクトのdrawメソッドを呼び出して描画する
         for obj in self.objects:
+            # print(obj)
             obj.draw(ax, elems)
             if hasattr(obj, "one_step"):
+                # one_stepメソッドがあればそれを実行
                 obj.one_step(self.time_interval)
 
 
@@ -85,7 +92,7 @@ class IdealRobot:
             color="black",
         )
         if self.sensor and len(self.poses) > 1:
-            # 最後から2番目にアクセス？
+            # 最後から2番目にアクセス=カメラ位置＝ロボット位置
             self.sensor.draw(ax, elems, self.poses[-2])
         if self.agent and hasattr(self.agent, "draw"):
             self.agent.draw(ax, elems)
@@ -121,6 +128,7 @@ class IdealRobot:
         if not self.agent:
             return
 
+        # osb = センサー値((l,φ),landmark_id)の組
         obs = self.sensor.data(self.pose) if self.sensor else None  # 追加
         nu, omega = self.agent.decision(obs)
         self.pose = self.state_transition(nu, omega, time_interval, self.pose)
@@ -239,6 +247,13 @@ class IdealCamera:
         return np.array([np.hypot(*diff), phi]).T
 
     def draw(self, ax, elems, cam_pose):
+        """カメラから見たランドマークまでのレーザーの軌跡を描画
+
+        Args:
+            ax (_type_): 描画先オブジェクト
+            elems (_type_): 描画先オブジェクトをまとめるオブジェクト
+            cam_pose (_type_): カメラ姿勢＝ロボット姿勢
+        """
         for lm in self.lastdata:
             x, y, theta = cam_pose
             distance, direction = lm[0][0], lm[0][1]
